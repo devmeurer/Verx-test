@@ -1,6 +1,5 @@
 const Cadastro = require("../models/cadastro.model.js");
 
-// Create and Save a new Cadastro
 exports.create = (req, res) => {
   if (!req.body) {
     res.status(400).send({
@@ -19,7 +18,6 @@ exports.create = (req, res) => {
     culturas_plantadas: req.body.culturas_plantadas
   });
 
-  // Save Cadastro in the database
   Cadastro.create(cadastro, (err, data) => {
     if (err)
       res.status(500).send({
@@ -30,7 +28,6 @@ exports.create = (req, res) => {
   });
 };
 
-// Update a Cadastro identified by the cadastroId in the request
 exports.update = (req, res) => {
     const id = req.params.id;
     if (!req.body) {
@@ -39,7 +36,6 @@ exports.update = (req, res) => {
       });
     }
   
-    // Verifica se a soma das áreas é válida
     const totalArea = req.body.area_total_hectares;
     const cultivableArea = req.body.area_agricultavel_hectares;
     const vegetationArea = req.body.area_vegetacao_hectares;
@@ -50,95 +46,47 @@ exports.update = (req, res) => {
     }
 
     function validaCPF(cpf) {
-        cpf = cpf.replace(/[^\d]+/g,'');    
-        if(cpf == '') return false;    
-        // Elimina CPFs invalidos conhecidos    
-        if (cpf.length != 11 || 
-            cpf == "00000000000" || 
-            cpf == "11111111111" || 
-            cpf == "22222222222" || 
-            cpf == "33333333333" || 
-            cpf == "44444444444" || 
-            cpf == "55555555555" || 
-            cpf == "66666666666" || 
-            cpf == "77777777777" || 
-            cpf == "88888888888" || 
-            cpf == "99999999999")
-                return false;       
-        // Valida 1o digito 
-        add = 0;    
-        for (i=0; i < 9; i ++)       
-            add += parseInt(cpf.charAt(i)) * (10 - i);  
-            rev = 11 - (add % 11);  
-            if (rev == 10 || rev == 11)     
-                rev = 0;    
-            if (rev != parseInt(cpf.charAt(9)))     
-                return false;       
-        // Valida 2o digito 
-        add = 0;    
-        for (i = 0; i < 10; i ++)        
-            add += parseInt(cpf.charAt(i)) * (11 - i);  
-        rev = 11 - (add % 11);  
-        if (rev == 10 || rev == 11) 
-            rev = 0;    
-        if (rev != parseInt(cpf.charAt(10)))
-            return false;       
-        return true;   
+        cpf = cpf.replace(/\D/g, '');
+        if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+    
+        let soma = 0;
+        for (let i = 0; i < 9; i++) {
+            soma += parseInt(cpf.charAt(i)) * (10 - i);
+        }
+        let resto = (soma * 10) % 11;
+        if (resto === 10 || resto === 11) resto = 0;
+        if (resto !== parseInt(cpf.charAt(9))) return false;
+    
+        soma = 0;
+        for (let i = 0; i < 10; i++) {
+            soma += parseInt(cpf.charAt(i)) * (11 - i);
+        }
+        resto = (soma * 10) % 11;
+        if (resto === 10 || resto === 11) resto = 0;
+        return resto === parseInt(cpf.charAt(10));
     }
+    
     
     function validaCNPJ(cnpj) {
-        cnpj = cnpj.replace(/[^\d]+/g,'');
+        cnpj = cnpj.replace(/\D/g, '');
+        if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
     
-        if(cnpj == '') return false;
-        
-        if (cnpj.length != 14)
-            return false;
+        const validador = (tamanho) => {
+            let soma = 0;
+            const pos = tamanho - 7;
+            for (let i = tamanho; i >= 1; i--) {
+                soma += parseInt(cnpj.charAt(tamanho - i)) * (pos - i);
+                if (i === 5) i -= 8;
+            }
+            let resto = soma % 11;
+            return resto < 2 ? 0 : 11 - resto;
+        };
     
-        // Elimina CNPJs invalidos conhecidos
-        if (cnpj == "00000000000000" || 
-            cnpj == "11111111111111" || 
-            cnpj == "22222222222222" || 
-            cnpj == "33333333333333" || 
-            cnpj == "44444444444444" || 
-            cnpj == "55555555555555" || 
-            cnpj == "66666666666666" || 
-            cnpj == "77777777777777" || 
-            cnpj == "88888888888888" || 
-            cnpj == "99999999999999")
-            return false;
-             
-        // Valida DVs
-        tamanho = cnpj.length - 2
-        numeros = cnpj.substring(0,tamanho);
-        digitos = cnpj.substring(tamanho);
-        soma = 0;
-        pos = tamanho - 7;
-        for (i = tamanho; i >= 1; i--) {
-          soma += numeros.charAt(tamanho - i) * pos--;
-          if (pos < 2)
-                pos = 9;
-        }
-        resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
-        if (resultado != digitos.charAt(0))
-            return false;
-            
-        tamanho = tamanho + 1;
-        numeros = cnpj.substring(0,tamanho);
-        soma = 0;
-        pos = tamanho - 7;
-        for (i = tamanho; i >= 1; i--) {
-          soma += numeros.charAt(tamanho - i) * pos--;
-          if (pos < 2)
-                pos = 9;
-        }
-        resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
-        if (resultado != digitos.charAt(1))
-              return false;
-               
-        return true;
+        const digitos = parseInt(cnpj.slice(12, 14));
+        return digitos === ((validador(12) * 10) + validador(13));
     }
     
-    // Dentro do método de update (e create, se aplicável)
+    
     const cpf_cnpj = req.body.cpf_cnpj;
     if(cpf_cnpj.length === 11) {
         if(!validaCPF(cpf_cnpj)) {
@@ -168,7 +116,7 @@ exports.update = (req, res) => {
     });
   };
 
-// Delete a Cadastro with the specified cadastroId in the request
+
 exports.delete = (req, res) => {
     const id = req.params.id;
   
@@ -187,7 +135,7 @@ exports.delete = (req, res) => {
     });
   };
 
-// Retrieve a single Cadastro with cadastroId
+
 exports.findOne = (req, res) => {
     Cadastro.findById(req.params.id, (err, data) => {
       if (err) {
@@ -204,7 +152,7 @@ exports.findOne = (req, res) => {
     });
   };
 
-// Retrieve all Cadastros from the database.
+
 exports.findAll = (req, res) => {
     Cadastro.getAll((err, data) => {
       if (err)

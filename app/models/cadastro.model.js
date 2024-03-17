@@ -1,6 +1,6 @@
 const sql = require("./db.js");
 
-// constructor
+
 const Cadastro = function(cadastro) {
   this.cpf_cnpj = cadastro.cpf_cnpj;
   this.nome_produtor = cadastro.nome_produtor;
